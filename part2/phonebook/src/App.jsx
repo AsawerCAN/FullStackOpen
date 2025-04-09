@@ -19,7 +19,14 @@ const App = () => {
   const [errorMessage, setErrorMessage] = useState(null);
 
   useEffect(() => {
-    getAllPersons().then((data) => setPersons(data));
+    getAllPersons().then((data) => {
+      if (Array.isArray(data)) {
+        setPersons(data);
+      } else {
+        console.error("Data received is not an array:", data);
+        setPersons([]);
+      }
+    });
   }, []);
 
   const handleNameChange = (event) => setNewName(event.target.value);
@@ -28,18 +35,26 @@ const App = () => {
 
   const handleDelete = (id, name) => {
     if (window.confirm(`Delete ${name}?`)) {
+      console.log(`Attempting to delete person with id: ${id}, name: ${name}`);
+
       deletePerson(id)
-        .then(() => {
-          setPersons(persons.filter((person) => person.id !== id));
+        .then((response) => {
+          console.log(`Delete successful for ${id}`, response);
+          setPersons((currentPersons) => {
+            console.log("Current persons before filter:", currentPersons);
+            const newPersons = currentPersons.filter(
+              (person) => person.id !== id
+            );
+            console.log("Persons after filter:", newPersons);
+            return newPersons;
+          });
           setNotificationMessage(`Deleted ${name}`);
           setTimeout(() => setNotificationMessage(null), 3000);
         })
         .catch((error) => {
-          setErrorMessage(
-            `Information of ${name} has already been removed from the server`
-          );
-          setTimeout(() => setErrorMessage(null), 3000);
-          console.error(error);
+          console.error(`Error deleting ${name}:`, error);
+          setErrorMessage(error.message || `Error deleting ${name}`);
+          setTimeout(() => setErrorMessage(null), 5000);
         });
     }
   };
@@ -67,9 +82,11 @@ const App = () => {
             setTimeout(() => setNotificationMessage(null), 5000);
           })
           .catch((error) => {
-            setErrorMessage(`Failed to update ${newName}'s number`);
+            setErrorMessage(
+              error.message || `Failed to update ${newName}'s number`
+            );
             setTimeout(() => setErrorMessage(null), 5000);
-            console.log(error);
+            console.error("Update failed:", error);
           });
       }
     } else {
@@ -82,9 +99,9 @@ const App = () => {
           setTimeout(() => setNotificationMessage(null), 5000);
         })
         .catch((error) => {
-          setErrorMessage(`Failed to add ${newName}`);
+          setErrorMessage(error.message || `Failed to add ${newName}`);
           setTimeout(() => setErrorMessage(null), 5000);
-          console.log(error);
+          console.error("Add failed:", error);
         });
     }
   };
@@ -94,21 +111,31 @@ const App = () => {
   );
 
   return (
-    <div>
-      <h2>Phonebook</h2>
+    <div className="phonebook-container">
+      <h1>Phonebook</h1>
+
       <Notification message={notificationMessage} type="success" />
       <Notification message={errorMessage} type="error" />
-      <Filter value={filter} onChange={handleFilterChange} />
-      <h3>Add a new</h3>
-      <PersonForm
-        newName={newName}
-        newNumber={newNumber}
-        handleNameChange={handleNameChange}
-        handleNumberChange={handleNumberChange}
-        handleSubmit={handleSubmit}
-      />
-      <h3>Numbers</h3>
-      <Persons persons={filteredPersons} onDelete={handleDelete} />
+
+      <div className="filter-section">
+        <Filter value={filter} onChange={handleFilterChange} />
+      </div>
+
+      <div className="form-section">
+        <h2>Add a New Contact</h2>
+        <PersonForm
+          newName={newName}
+          newNumber={newNumber}
+          handleNameChange={handleNameChange}
+          handleNumberChange={handleNumberChange}
+          handleSubmit={handleSubmit}
+        />
+      </div>
+
+      <div className="contacts-section">
+        <h2>Contacts</h2>
+        <Persons persons={filteredPersons} onDelete={handleDelete} />
+      </div>
     </div>
   );
 };
